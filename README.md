@@ -1,4 +1,6 @@
-This is a repository for the poker experiments in the paper `Actor-Critic Policy Optimization in a Large-Scale Imperfect-Information Game`.
+This is a project for the poker experiments in the paper `Actor-Critic Policy Optimization in a Large-Scale Imperfect-Information Game`.
+
+This project depends on a customized version of [Open_spiel](https://github.com/deepmind/open_spiel) (See `third_party/open_spiel`). Other dependencies include [Tensorflow](https://github.com/tensorflow/tensorflow) and [project_acpc_server](https://github.com/dmorrill10/project_acpc_server).
 
 # Requirements.
 ## Manually installation.
