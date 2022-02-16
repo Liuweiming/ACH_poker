@@ -1,0 +1,49 @@
+ARG TF_CC=tensorflow_cc:1.15.3-cuda10-cudnn7-py3
+
+ARG BASE=tensorflow_base:1.15.3-cuda10-cudnn7-py3
+
+FROM ${TF_CC} as tf_cc
+
+ARG BASE=tensorflow_base:1.15.3-cuda10-cudnn7-py3
+
+FROM ${BASE}
+
+RUN apt update && \
+    apt install -y software-properties-common build-essential ssh git curl wget \
+    python3 python3-dev python3-pip python3-setuptools python3-wheel vim \ 
+    wget autoconf automake libtool libffi-dev vim unzip zip zlib1g-dev liblzma-dev rsync && \
+    wget -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add - && \
+    apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main' && \
+    apt update && apt install -y cmake && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3 100
+
+RUN wget -qO - http://download.savannah.gnu.org/releases/libunwind/libunwind-1.1.tar.gz | tar -xz && \
+    cd libunwind-1.1 && ./configure && make -j8 && make install && \
+    cd ../ && rm -rf libunwind-1.1 && \
+    wget -qO - https://github.com/gperftools/gperftools/releases/download/gperftools-2.8/gperftools-2.8.tar.gz | tar -xz && \
+    cd gperftools-2.8 && ./configure && make -j8 && make install && \
+    cd ../ && rm -rf gperftools-2.8 && \
+    ldconfig
+
+
+RUN mkdir my_spiel
+WORKDIR /my_spiel
+
+COPY . .
+COPY --from=tf_cc /third_party ./third_party
+
+ENV CC=gcc
+ENV CXX=g++
+ENV BUILD_WITH_ACPC=ON
+ENV PYTHONPATH=${PYTHONPATH}:/my_spiel/third_party/open_spiel
+ENV PYTHONPATH=${PYTHONPATH}:/my_spiel/build/third_party/open_spiel/python
+
+
+RUN cd third_party && \
+    ./install.sh && \
+    pip3 install --upgrade pip && \
+    pip install --upgrade -r requirements.txt
+# cd .. && \
+# mkdir build && cd build && \
+# cmake -DCMAKE_BUILD_TYPE=Release .. && \ 
+# make -j8

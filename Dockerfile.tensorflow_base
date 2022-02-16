@@ -1,0 +1,102 @@
+ARG UBUNTU_VERSION=18.04
+
+ARG ARCH=
+ARG CUDA=10.0
+FROM nvidia/cuda${ARCH:+-$ARCH}:${CUDA}-cudnn7-devel-ubuntu${UBUNTU_VERSION} as base
+# ARCH and CUDA are specified again because the FROM directive resets ARGs
+# (but their default value is retained if set previously)
+ARG ARCH
+ARG CUDA
+ARG CUDNN=7.6.2.24-1
+ARG CUDNN_MAJOR_VERSION=7
+ARG LIB_DIR_PREFIX=x86_64
+
+# Needed for string substitution
+SHELL ["/bin/bash", "-c"]
+RUN rm -rf /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/nvidia-ml.list && \
+    sed -i 's/archive.ubuntu.com/mirrors.ustc.edu.cn/g' /etc/apt/sources.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    libcurl3-dev \
+    libfreetype6-dev \
+    libhdf5-serial-dev \
+    libzmq3-dev \
+    pkg-config \
+    rsync \
+    software-properties-common \
+    unzip \
+    zip \
+    zlib1g-dev \
+    wget \
+    git \
+    && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Configure the build for our CUDA configuration.
+ENV CI_BUILD_PYTHON python
+ENV LD_LIBRARY_PATH /usr/local/cuda/extras/CUPTI/lib64:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+ENV TF_NEED_CUDA 1
+ENV TF_CUDA_COMPUTE_CAPABILITIES=3.5,5.2,6.0,6.1,7.0
+ENV TF_CUDA_VERSION=${CUDA}
+ENV TF_CUDNN_VERSION=${CUDNN_MAJOR_VERSION}
+
+# Link the libcuda stub to the location where tensorflow is searching for it and reconfigure
+# dynamic linker run-time bindings
+RUN ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1 \
+    && echo "/usr/local/cuda/lib64/stubs" > /etc/ld.so.conf.d/z-cuda-stubs.conf \
+    && ldconfig
+
+ARG USE_PYTHON_3_NOT_2
+ARG _PY_SUFFIX=${USE_PYTHON_3_NOT_2:+3}
+ARG PYTHON=python${_PY_SUFFIX}
+ARG PIP=pip${_PY_SUFFIX}
+
+# See http://bugs.python.org/issue19846
+ENV LANG C.UTF-8
+
+RUN apt-get update && apt-get install -y \
+    ${PYTHON} \
+    ${PYTHON}-pip
+
+RUN ${PIP} --no-cache-dir install --upgrade \
+    pip \
+    setuptools
+
+# Some TF tools expect a "python" binary
+RUN ln -s $(which ${PYTHON}) /usr/local/bin/python 
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    wget \
+    openjdk-8-jdk \
+    ${PYTHON}-dev \
+    virtualenv \
+    swig
+
+RUN ${PIP} --no-cache-dir install \
+    Pillow \
+    h5py \
+    keras_applications \
+    keras_preprocessing \
+    matplotlib \
+    mock \
+    numpy \
+    scipy \
+    sklearn \
+    pandas \
+    future \
+    portpicker \
+    && test "${USE_PYTHON_3_NOT_2}" -eq 1 && true || ${PIP} --no-cache-dir install \
+    enum34
+
+# Install bazel
+ARG BAZEL_VERSION=0.26.1
+RUN mkdir /bazel && \
+    wget -O /bazel/installer.sh https://mirrors.huaweicloud.com/bazel/0.26.1/bazel-0.26.1-installer-linux-x86_64.sh && \
+    chmod +x /bazel/installer.sh && \
+    /bazel/installer.sh && \
+    rm -f /bazel/installer.sh

@@ -1,0 +1,21 @@
+ARG BASE=tensorflow_base:1.15.3-cuda10-cudnn7-py3
+
+FROM ${BASE}
+
+RUN git clone --branch v1.15.3  https://github.com/tensorflow/tensorflow
+
+RUN cd /tensorflow && ./configure && \
+    bazel build -c opt --copt=-mavx --copt=-mavx2 --copt=-mfma --copt=-mfpmath=both --copt=-msse4.2 --config=cuda --config=monolithic  //tensorflow:libtensorflow_cc.so
+
+RUN mkdir /third_party && cd /third_party && mkdir tensorflow && cd tensorflow && \
+    mkdir include && \
+    cp -rL /tensorflow/tensorflow ./include && \
+    cp -rL /tensorflow/third_party ./include && \
+    cp -rL /tensorflow/bazel-tensorflow/external/nsync ./include && \
+    cp -rL /tensorflow/bazel-tensorflow/external/eigen_archive ./include && \
+    cp -rL /tensorflow/bazel-tensorflow/external/com_google_absl ./include && \
+    cp -rL /tensorflow/bazel-tensorflow/external/com_google_protobuf ./include && \
+    mkdir bazel_include && \
+    rsync -avm --include='*.h'  -f 'hide,! */' /tensorflow/bazel-bin/ ./bazel_include && \
+    mkdir bin && \
+    cp -r /tensorflow/bazel-bin/tensorflow/libtensorflow_cc* ./bin
