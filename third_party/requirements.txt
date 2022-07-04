@@ -1,0 +1,4 @@
+# The single source of truth for the OpenSpiel pip dependencies.
+pip >= 20.0.2
+absl-py == 0.9.0
+tensorflow-gpu < 2.0, >= 1.15.1
