@@ -63,6 +63,7 @@ This project depends on a customized version of [Open_spiel](https://github.com/
     ```bash
     source env.sh
     cd third_party && ./install.sh
+    cd ..
     mkdir build && cd build
     cmake -DCMAKE_BUILD_TYPE=Release ..
     make -j8
